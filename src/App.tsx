@@ -227,7 +227,7 @@ export default function App() {
     <div className="h-screen h-[100dvh] bg-[#070b13] text-slate-200 flex flex-col md:flex-row font-sans overflow-hidden select-none">
       
       {/* 1. SIDEBAR Navigation Panel */}
-      <div className={`w-full md:w-80 bg-slate-900/60 border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col flex-shrink-0 relative z-20 ${selectedUserId && activeTab === 'chat' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 bg-slate-900/60 border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col flex-shrink-0 relative z-20 ${(selectedUserId && activeTab === 'chat') || activeTab !== 'chat' ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
@@ -358,11 +358,29 @@ export default function App() {
               </div>
             )
           ) : activeTab === 'settings' ? (
-            <div className="py-6">
+            <div className="py-6 px-4 md:px-0">
+              {/* Back to Chat header for mobile */}
+              <div className="md:hidden mb-4 flex items-center">
+                <button
+                  onClick={() => changeTab('chat')}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl cursor-pointer"
+                >
+                  ← Sohbetlere Geri Dön
+                </button>
+              </div>
               <ProfileSettings currentUser={currentUser} onProfileUpdate={() => {}} />
             </div>
           ) : activeTab === 'admin' ? (
-            <div className="py-6">
+            <div className="py-6 px-4 md:px-0">
+              {/* Back to Chat header for mobile */}
+              <div className="md:hidden mb-4 flex items-center">
+                <button
+                  onClick={() => changeTab('chat')}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl cursor-pointer"
+                >
+                  ← Sohbetlere Geri Dön
+                </button>
+              </div>
               <AdminPanel currentUser={currentUser} />
             </div>
           ) : null}
