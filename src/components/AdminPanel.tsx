@@ -13,9 +13,10 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, Lock, Users, MessageSquare, Activity, Trash2, 
-  Search, ShieldAlert, KeyRound, ArrowRightLeft, Database, Sparkles 
+  Search, ShieldAlert, KeyRound, ArrowRightLeft, Database, Sparkles,
+  Bug, HelpCircle, CheckCircle2, Clock, Filter, AlertCircle, RefreshCw
 } from 'lucide-react';
-import { UserProfile, Message, AppStats } from '../types';
+import { UserProfile, Message, AppStats, Feedback } from '../types';
 import { GeminiAvatar } from './GeminiAvatar';
 
 interface AdminPanelProps {
@@ -29,10 +30,14 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([]);
   const [stats, setStats] = useState<AppStats>({ totalUsers: 0, totalMessages: 0, activeOnline: 0 });
   
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [logsSearchQuery, setLogsSearchQuery] = useState('');
+  const [feedbackSearchQuery, setFeedbackSearchQuery] = useState('');
+  const [feedbackTypeFilter, setFeedbackTypeFilter] = useState<'all' | 'bug' | 'feature' | 'feedback'>('all');
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState<'all' | 'new' | 'reviewed' | 'resolved' | 'rejected'>('all');
 
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [successNotification, setSuccessNotification] = useState('');
@@ -52,7 +57,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
-  // Listen to Firestore changes for Users and Messages once unlocked
+  // Listen to Firestore changes for Users, Messages and Feedbacks once unlocked
   useEffect(() => {
     if (!isAdminUnlocked) return;
 
@@ -101,11 +106,58 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       }));
     });
 
+    // Feedbacks Real-time listener
+    const feedbacksRef = collection(db, 'feedbacks');
+    const unsubscribeFeedbacks = onSnapshot(feedbacksRef, (snapshot) => {
+      const fList: Feedback[] = [];
+      snapshot.forEach((doc) => {
+        const f = doc.data() as Feedback;
+        fList.push({ id: doc.id, ...f });
+      });
+
+      // Sort feedbacks by createdAt desc
+      fList.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      });
+
+      setAllFeedbacks(fList);
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribeMessages();
+      unsubscribeFeedbacks();
     };
   }, [isAdminUnlocked]);
+
+  // Update feedback status
+  const handleUpdateFeedbackStatus = async (feedbackId: string, newStatus: 'new' | 'reviewed' | 'resolved' | 'rejected') => {
+    try {
+      const fbRef = doc(db, 'feedbacks', feedbackId);
+      await updateDoc(fbRef, { status: newStatus });
+      setSuccessNotification('Talep durumu başarıyla güncellendi.');
+      setTimeout(() => setSuccessNotification(''), 4000);
+    } catch (err) {
+      console.error("Error updating feedback status:", err);
+      setSuccessNotification('Hata: Durum güncellenemedi.');
+      setTimeout(() => setSuccessNotification(''), 4000);
+    }
+  };
+
+  // Delete feedback
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    try {
+      await deleteDoc(doc(db, 'feedbacks', feedbackId));
+      setSuccessNotification('Geri bildirim kalıcı olarak silindi.');
+      setTimeout(() => setSuccessNotification(''), 4000);
+    } catch (err) {
+      console.error("Error deleting feedback:", err);
+      setSuccessNotification('Hata: Silme işlemi başarısız.');
+      setTimeout(() => setSuccessNotification(''), 4000);
+    }
+  };
 
   // Ban / Unban user
   const handleToggleBan = async (user: UserProfile) => {
@@ -218,6 +270,21 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       (sender && sender.displayName.toLowerCase().includes(q)) ||
       (receiver && receiver.displayName.toLowerCase().includes(q))
     );
+  });
+
+  // Filter feedbacks based on search and tab selections
+  const filteredFeedbacks = allFeedbacks.filter(f => {
+    const q = feedbackSearchQuery.toLowerCase();
+    const matchesSearch = 
+      f.title.toLowerCase().includes(q) ||
+      f.message.toLowerCase().includes(q) ||
+      f.userDisplayName.toLowerCase().includes(q) ||
+      f.userEmail.toLowerCase().includes(q);
+      
+    const matchesType = feedbackTypeFilter === 'all' || f.type === feedbackTypeFilter;
+    const matchesStatus = feedbackStatusFilter === 'all' || f.status === feedbackStatusFilter;
+    
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   const getFormatTime = (createdAt: any) => {
@@ -522,6 +589,191 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <div className="text-center py-6 text-slate-500 text-xs">Arşivde kayıtlı sohbet mesajı bulunmuyor.</div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Geri Bildirimler ve Talepler Section */}
+      <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-md font-bold text-white flex items-center gap-2">
+                Hata Bildirimleri & Geliştirme Talepleri
+                <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  {filteredFeedbacks.length} Talep
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">Kullanıcılardan gelen kaliteli güncelleme isteklerini ve hataları buradan okuyabilir ve durumlarını güncelleyebilirsiniz.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Search bar */}
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <Search className="w-4 h-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="Talep başlığı, içerik veya kullanıcı ara..."
+              value={feedbackSearchQuery}
+              onChange={(e) => setFeedbackSearchQuery(e.target.value)}
+              className="w-full bg-slate-950/40 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 transition-all outline-none"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <div className="flex items-center gap-2 bg-slate-950/40 border border-slate-800 rounded-xl px-3 py-1 text-xs text-slate-300">
+            <span className="text-[10px] font-bold font-mono text-slate-500 uppercase">Kategori:</span>
+            <select
+              value={feedbackTypeFilter}
+              onChange={(e) => setFeedbackTypeFilter(e.target.value as any)}
+              className="bg-transparent text-slate-200 outline-none w-full cursor-pointer font-semibold"
+            >
+              <option value="all" className="bg-slate-900 text-slate-200">Tümü</option>
+              <option value="feature" className="bg-slate-900 text-slate-200">💡 Güncelleme İsteği</option>
+              <option value="bug" className="bg-slate-900 text-slate-200">🐛 Hata Bildirimi</option>
+              <option value="feedback" className="bg-slate-900 text-slate-200">💬 Genel Öneri</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-2 bg-slate-950/40 border border-slate-800 rounded-xl px-3 py-1 text-xs text-slate-300">
+            <span className="text-[10px] font-bold font-mono text-slate-500 uppercase">Durum:</span>
+            <select
+              value={feedbackStatusFilter}
+              onChange={(e) => setFeedbackStatusFilter(e.target.value as any)}
+              className="bg-transparent text-slate-200 outline-none w-full cursor-pointer font-semibold"
+            >
+              <option value="all" className="bg-slate-900 text-slate-200">Tümü</option>
+              <option value="new" className="bg-slate-900 text-slate-200">🆕 Yeni</option>
+              <option value="reviewed" className="bg-slate-900 text-slate-200">👀 İncelemede</option>
+              <option value="resolved" className="bg-slate-900 text-slate-200">✅ Çözüldü / Tamamlandı</option>
+              <option value="rejected" className="bg-slate-900 text-slate-200">❌ Reddedildi</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Feedback List Container */}
+        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+          {filteredFeedbacks.length > 0 ? (
+            filteredFeedbacks.map((f) => {
+              // Type styling
+              const typeBadge = 
+                f.type === 'bug' ? { text: 'Hata Bildirimi', style: 'bg-rose-500/10 border-rose-500/20 text-rose-400' } :
+                f.type === 'feature' ? { text: 'Güncelleme İsteği', style: 'bg-violet-500/10 border-violet-500/20 text-violet-400' } :
+                { text: 'Genel Öneri', style: 'bg-sky-500/10 border-sky-500/20 text-sky-400' };
+
+              // Priority styling
+              const priorityBadge =
+                f.priority === 'critical' ? { text: 'Kritik 🚨', style: 'bg-rose-600/25 border-rose-500 text-rose-400 font-bold animate-pulse' } :
+                f.priority === 'high' ? { text: 'Yüksek', style: 'bg-amber-500/15 border-amber-500/30 text-amber-400' } :
+                f.priority === 'medium' ? { text: 'Orta', style: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' } :
+                { text: 'Düşük', style: 'bg-slate-800/40 border-slate-800 text-slate-400' };
+
+              // Status styling
+              const statusBadge =
+                f.status === 'resolved' ? { text: 'Çözüldü', style: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' } :
+                f.status === 'reviewed' ? { text: 'İncelemede', style: 'bg-sky-500/15 border-sky-500/30 text-sky-400' } :
+                f.status === 'rejected' ? { text: 'Reddedildi', style: 'bg-slate-800 border-slate-700 text-slate-500' } :
+                { text: 'Yeni', style: 'bg-indigo-600/25 border-indigo-500 text-indigo-300 font-bold' };
+
+              return (
+                <div 
+                  key={f.id}
+                  className="p-5 bg-slate-950/40 border border-slate-800/80 rounded-2xl space-y-3.5 relative overflow-hidden transition-all hover:border-slate-700"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    {/* User profile details */}
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={f.userPhotoURL || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + f.userId} 
+                        alt="Avatar" 
+                        className="w-8 h-8 rounded-full bg-slate-900 object-cover border border-slate-800"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-200">{f.userDisplayName}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{f.userEmail}</div>
+                      </div>
+                    </div>
+
+                    {/* Badge Pill Group */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:self-center">
+                      <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border ${typeBadge.style}`}>
+                        {typeBadge.text}
+                      </span>
+                      <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border ${priorityBadge.style}`}>
+                        Önem: {priorityBadge.text}
+                      </span>
+                      <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border ${statusBadge.style}`}>
+                        {statusBadge.text}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500 ml-1">
+                        {getFormatTime(f.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Message Title & Content */}
+                  <div className="space-y-1.5 pl-0 sm:pl-11">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      {f.title}
+                    </h4>
+                    <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 border border-slate-900 p-3.5 rounded-xl whitespace-pre-wrap font-sans">
+                      {f.message}
+                    </p>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 sm:pl-11 border-t border-slate-900 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-500 font-mono uppercase">Durumu Güncelle:</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { key: 'new', label: 'Yeni', hover: 'hover:bg-indigo-500/10 hover:text-indigo-400' },
+                          { key: 'reviewed', label: 'İncelemede', hover: 'hover:bg-sky-500/10 hover:text-sky-400' },
+                          { key: 'resolved', label: 'Çözüldü', hover: 'hover:bg-emerald-500/10 hover:text-emerald-400' },
+                          { key: 'rejected', label: 'Reddet', hover: 'hover:bg-rose-500/10 hover:text-rose-400' }
+                        ].map((btn) => (
+                          <button
+                            key={btn.key}
+                            onClick={() => handleUpdateFeedbackStatus(f.id, btn.key as any)}
+                            className={`px-2 py-1 rounded text-[10px] font-semibold transition-all cursor-pointer ${
+                              f.status === btn.key 
+                                ? 'bg-slate-100 text-slate-950 font-bold' 
+                                : `bg-slate-900 border border-slate-800 text-slate-400 ${btn.hover}`
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Delete button */}
+                    <button
+                      onClick={() => handleDeleteFeedback(f.id)}
+                      className="flex items-center justify-center gap-1 py-1.5 px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 rounded-lg text-[10px] font-semibold cursor-pointer transition-all self-end sm:self-auto"
+                      title="Sil"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Kalıcı Olarak Sil</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-10 bg-slate-950/20 border border-slate-800/40 rounded-2xl text-slate-500 text-xs flex flex-col items-center gap-2">
+              <Sparkles className="w-6 h-6 text-slate-700 animate-pulse" />
+              <span>Aranan kriterlere uygun bir talep veya geri bildirim bulunamadı.</span>
+            </div>
+          )}
         </div>
       </div>
 

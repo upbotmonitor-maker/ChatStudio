@@ -75,5 +75,16 @@ service cloud.firestore {
         
       allow update, delete: if isSignedIn() && isAdmin();
     }
+
+    // feedbacks Collection
+    match /feedbacks/{feedbackId} {
+      allow read, list, update, delete: if isAdmin();
+      
+      allow create: if isSignedIn() 
+        && request.resource.data.id == feedbackId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+    }
   }
 }

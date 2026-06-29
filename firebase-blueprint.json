@@ -40,6 +40,25 @@
         "timestamp": { "type": "object", "format": "timestamp" }
       },
       "required": ["id", "senderId", "receiverId", "text", "chatId", "timestamp"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "A bug report, feature request, or general feedback from a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "type": { "type": "string", "enum": ["bug", "feature", "feedback"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "status": { "type": "string", "enum": ["new", "reviewed", "resolved", "rejected"] },
+        "createdAt": { "type": "object", "format": "timestamp" }
+      },
+      "required": ["id", "userId", "userEmail", "userDisplayName", "type", "title", "message", "priority", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -54,6 +73,10 @@
     "/messages/{messageId}": {
       "schema": "ChatMessage",
       "description": "Consolidated message collection for peer-to-peer chats"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Feedback, bug reports and feature requests"
     }
   }
 }

@@ -33,3 +33,17 @@ export interface AppStats {
   totalMessages: number;
   activeOnline: number;
 }
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userDisplayName: string;
+  userPhotoURL: string;
+  type: 'bug' | 'feature' | 'feedback';
+  title: string;
+  message: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'new' | 'reviewed' | 'resolved' | 'rejected';
+  createdAt: any; // Firestore Timestamp
+}

@@ -19,6 +19,7 @@ import ProfileCard from './components/ProfileCard';
 import ProfileSettings from './components/ProfileSettings';
 import Shop from './components/Shop';
 import AdminPanel from './components/AdminPanel';
+import { FeedbackModal } from './components/FeedbackModal';
 import { UserProfile } from './types';
 
 // Virtual AI User Object
@@ -49,6 +50,7 @@ export default function App() {
   const [profileModalUser, setProfileModalUser] = useState<UserProfile | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Parse location hash for routes
   useEffect(() => {
@@ -224,7 +226,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen h-[100dvh] bg-[#070b13] text-slate-200 flex flex-col md:flex-row font-sans overflow-hidden select-none">
+    <div className="h-screen h-[100dvh] bg-[#070b13] text-slate-200 flex flex-col md:flex-row font-sans overflow-hidden">
       
       {/* 1. SIDEBAR Navigation Panel */}
       <div className={`w-full md:w-80 bg-slate-900/60 border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col flex-shrink-0 relative z-20 ${(selectedUserId && activeTab === 'chat') || activeTab !== 'chat' ? 'hidden md:flex' : 'flex'}`}>
@@ -310,6 +312,31 @@ export default function App() {
             <Settings className="w-4 h-4" />
             <span>Profil Ayarları</span>
           </button>
+
+          {currentUser.role === 'admin' && (
+            <button
+              onClick={() => changeTab('admin')}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                activeTab === 'admin' 
+                  ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/15' 
+                  : 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/20'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Yönetici Paneli ✦</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setShowFeedbackModal(true);
+              setMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/10"
+          >
+            <Sparkles className="w-4 h-4 animate-pulse" />
+            <span>Hata Bildir / İstek ✦</span>
+          </button>
         </div>
 
         {/* Real-time users list (Only displayed when 'chat' tab is active) */}
@@ -333,7 +360,7 @@ export default function App() {
       <div className={`flex-1 flex flex-col min-w-0 relative z-10 ${!selectedUserId && activeTab === 'chat' ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Dynamic Route views switch */}
-        <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {activeTab === 'chat' ? (
             selectedUser ? (
               // Chat conversation active
@@ -358,7 +385,7 @@ export default function App() {
               </div>
             )
           ) : activeTab === 'settings' ? (
-            <div className="py-6 px-4 md:px-0">
+            <div className="flex-1 overflow-y-auto w-full h-full p-4 sm:p-6 pb-36 md:pb-24">
               {/* Back to Chat header for mobile */}
               <div className="md:hidden mb-4 flex items-center">
                 <button
@@ -371,7 +398,7 @@ export default function App() {
               <ProfileSettings currentUser={currentUser} onProfileUpdate={() => {}} />
             </div>
           ) : activeTab === 'admin' ? (
-            <div className="py-6 px-4 md:px-0">
+            <div className="flex-1 overflow-y-auto w-full h-full p-4 sm:p-6 pb-36 md:pb-24">
               {/* Back to Chat header for mobile */}
               <div className="md:hidden mb-4 flex items-center">
                 <button
@@ -396,6 +423,16 @@ export default function App() {
           onProfileUpdate={() => {}}
         />
       )}
+
+      {/* 4. FEEDBACK & BUG REPORT MODAL (Pop-up overlay) */}
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <FeedbackModal 
+            currentUser={currentUser}
+            onClose={() => setShowFeedbackModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

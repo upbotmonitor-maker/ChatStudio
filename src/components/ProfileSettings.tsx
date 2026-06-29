@@ -194,20 +194,23 @@ export default function ProfileSettings({ currentUser, onProfileUpdate }: Profil
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={saving || uploading}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl px-5 py-2.5 shadow-lg shadow-indigo-500/10 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-55"
-        >
-          {saving ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              <span>Profili Kaydet</span>
-            </>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+          <button
+            type="submit"
+            disabled={saving || uploading}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl px-6 py-3 shadow-lg shadow-indigo-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-55"
+          >
+            {saving ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Profili Kaydet</span>
+              </>
+            )}
+          </button>
+        </div>
+        <div className="h-10 block sm:hidden" /> {/* Extra spacer for mobile screens to avoid clipping */}
       </form>
     </div>
   );
