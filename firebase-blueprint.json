@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account and profile configuration",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "status": { "type": "string" },
+        "role": { "type": "string" },
+        "isBanned": { "type": "boolean" },
+        "createdAt": { "type": "object", "format": "timestamp" }
+      },
+      "required": ["uid", "username", "displayName", "email"]
+    },
+    "UsernameReservation": {
+      "title": "UsernameReservation",
+      "description": "Unique username registry mapping a username to a user UID",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A direct message between two users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "chatId": { "type": "string" },
+        "timestamp": { "type": "object", "format": "timestamp" }
+      },
+      "required": ["id", "senderId", "receiverId", "text", "chatId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Global user directory"
+    },
+    "/usernames/{username}": {
+      "schema": "UsernameReservation",
+      "description": "Registry for reserving unique usernames"
+    },
+    "/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Consolidated message collection for peer-to-peer chats"
+    }
+  }
+}

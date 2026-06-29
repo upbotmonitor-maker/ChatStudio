@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData(request.auth.uid).role == 'admin';
+    }
+
+    function isUserNotBanned(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)) && 
+        (!('isBanned' in getUserData(uid)) || getUserData(uid).isBanned == false);
+    }
+
+    // users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId 
+        && request.resource.data.role == 'user'
+        && (!('isBanned' in request.resource.data) || request.resource.data.isBanned == false);
+        
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (request.auth.uid == userId 
+          && (!('isBanned' in resource.data) || resource.data.isBanned == false)
+          && request.resource.data.role == resource.data.role
+          && (!('isBanned' in request.resource.data) || request.resource.data.isBanned == resource.data.isBanned)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'status', 'lastActive'])
+        )
+      );
+      
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // usernames Collection
+    match /usernames/{username} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && request.resource.data.uid == request.auth.uid;
+        
+      allow update, delete: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || isAdmin()
+      );
+    }
+
+    // messages Collection
+    match /messages/{messageId} {
+      allow read, list: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid 
+        || resource.data.receiverId == request.auth.uid 
+        || isAdmin()
+      );
+      
+      allow create: if isSignedIn() 
+        && request.resource.data.senderId == request.auth.uid 
+        && isUserNotBanned(request.auth.uid);
+        
+      allow update, delete: if isSignedIn() && isAdmin();
+    }
+  }
+}
